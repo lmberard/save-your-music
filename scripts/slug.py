@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Convierte un título en un nombre de archivo simple: minúsculas, ASCII y guiones.
+"""Turns a title into a simple file name: lowercase, ASCII and hyphens.
 
 "RÜFÜS DU SOL - The Life (Official Audio)" -> "rufus-du-sol-the-life"
-Uso: slug.py "<texto>"
+Usage: slug.py "<text>"
 """
 import re
 import sys

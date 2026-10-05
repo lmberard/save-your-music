@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -57,16 +57,16 @@
 <body>
 <main>
   <h1>save-your-music</h1>
-  <p class="lead">Pegá links de YouTube o Spotify, uno por línea, y se descargan como MP3.</p>
+  <p class="lead">Paste YouTube or Spotify links, one per line, and they download as MP3.</p>
 
   <form id="form">
     <textarea id="links" placeholder="https://youtu.be/...&#10;https://open.spotify.com/track/..." autofocus></textarea>
-    <button id="go" type="submit">Descargar MP3</button>
+    <button id="go" type="submit">Download MP3</button>
   </form>
 
   <ul id="list"></ul>
 
-  <p class="note">MP3 a 192 kbps, listo para el reproductor. Los temas sueltos tardan unos segundos; los mixes largos, varios minutos. Los links de Spotify se buscan en YouTube; álbumes y playlists de Spotify no se pueden bajar desde acá.</p>
+  <p class="note">MP3 at 192 kbps, ready for the player. Single tracks take a few seconds; long mixes, several minutes. Spotify links are looked up on YouTube; Spotify albums and playlists cannot be downloaded from here.</p>
 </main>
 
 <script>
@@ -90,7 +90,7 @@ function setState(li, state, status, name) {
 }
 
 async function download(url, li) {
-  setState(li, "working", "Descargando y convirtiendo…");
+  setState(li, "working", "Downloading and converting…");
   let response;
   try {
     response = await fetch("/api/download", {
@@ -99,17 +99,17 @@ async function download(url, li) {
       body: JSON.stringify({ url }),
     });
   } catch (e) {
-    setState(li, "failed", "No se pudo conectar con el servidor. ¿Sigue abierto?");
+    setState(li, "failed", "Could not reach the server. Is it still running?");
     return;
   }
   if (!response.ok) {
-    let message = "No se pudo descargar.";
+    let message = "Could not download.";
     try { message = (await response.json()).error || message; } catch (e) {}
     setState(li, "failed", message);
     return;
   }
   const match = /filename="([^"]+)"/.exec(response.headers.get("Content-Disposition") || "");
-  const name = match ? match[1] : "cancion.mp3";
+  const name = match ? match[1] : "song.mp3";
   const blob = await response.blob();
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
@@ -118,7 +118,7 @@ async function download(url, li) {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 60000);
-  setState(li, "done", "Listo · " + (blob.size / 1048576).toFixed(1) + " MB · en tu carpeta de Descargas", name);
+  setState(li, "done", "Done · " + (blob.size / 1048576).toFixed(1) + " MB · in your Downloads folder", name);
 }
 
 form.addEventListener("submit", async (event) => {
@@ -128,7 +128,7 @@ form.addEventListener("submit", async (event) => {
   links.value = "";
   go.disabled = true;
   const items = urls.map((url) => [url, addItem(url)]);
-  items.forEach(([, li]) => setState(li, "", "En cola"));
+  items.forEach(([, li]) => setState(li, "", "Queued"));
   for (const [url, li] of items) await download(url, li);
   go.disabled = false;
   links.focus();

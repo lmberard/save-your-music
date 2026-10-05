@@ -1,35 +1,35 @@
 #!/bin/bash
-# Descarga el audio de un link de YouTube como MP3 compatible con el Psier S18.
-# Uso: yt_mp3.sh <url> [carpeta_destino]
+# Downloads the audio of a YouTube link as an MP3 the Psier S18 can play.
+# Usage: yt_mp3.sh <url> [output_dir]
 set -euo pipefail
 
-URL="${1:?Uso: yt_mp3.sh <url> [carpeta_destino]}"
+URL="${1:?Usage: yt_mp3.sh <url> [output_dir]}"
 OUT_DIR="${2:-$HOME/Music/Psier-S18}"
 
-# Los links de Spotify se resuelven aparte (busca el tema en YouTube y vuelve a llamar a este script).
+# Spotify links are resolved separately (the track is looked up on YouTube and this script is called again).
 if [[ "$URL" == *spotify* ]]; then
   exec python3 "$(dirname "$0")/spotify_mp3.py" "$@"
 fi
 
 for bin in yt-dlp ffmpeg; do
-  command -v "$bin" >/dev/null || { echo "Falta $bin (brew install $bin)" >&2; exit 1; }
+  command -v "$bin" >/dev/null || { echo "Missing $bin (brew install $bin)" >&2; exit 1; }
 done
 
 mkdir -p "$OUT_DIR"
 
-# Nombre de archivo simple (minúsculas, sin acentos ni símbolos), que el reproductor muestra bien.
+# Simple file name (lowercase, no accents or symbols) that the player displays correctly.
 TITLE="$(yt-dlp --no-playlist --no-warnings --print "%(title)s" "$URL")"
 NAME="$(python3 "$(dirname "$0")/slug.py" "$TITLE")"
 [ -n "$NAME" ] || NAME="$(yt-dlp --no-playlist --no-warnings --print "%(id)s" "$URL")"
 if [ -e "$OUT_DIR/$NAME.mp3" ]; then
-  echo "Ya existe, no se sobreescribe: $OUT_DIR/$NAME.mp3"
+  echo "Already exists, not overwritten: $OUT_DIR/$NAME.mp3"
   exit 0
 fi
 
-# MP3 CBR 192 kbps, 44.1 kHz, estéreo, tags ID3v2.3 y sin carátula embebida:
-# es la combinación que los reproductores chinos genéricos leen sin trabarse.
-# --http-chunk-size evita el HTTP 403 que YouTube devuelve a descargas sin trocear.
-# Aun así YouTube a veces responde 403 de forma transitoria, por eso se reintenta.
+# CBR 192 kbps MP3, 44.1 kHz, stereo, ID3v2.3 tags and no embedded cover art:
+# the combination generic players read without choking.
+# --http-chunk-size avoids the HTTP 403 YouTube returns for unchunked downloads.
+# YouTube still answers 403 transiently now and then, hence the retries.
 for attempt in 1 2 3; do
   yt-dlp \
   --no-playlist \
@@ -48,6 +48,6 @@ for attempt in 1 2 3; do
   --no-simulate \
   --quiet --no-warnings --progress \
   "$URL" && exit 0
-  [ "$attempt" -lt 3 ] && { echo "Falló el intento $attempt, reintentando..." >&2; sleep 3; }
+  [ "$attempt" -lt 3 ] && { echo "Attempt $attempt failed, retrying..." >&2; sleep 3; }
 done
 exit 1
