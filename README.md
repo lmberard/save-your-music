@@ -4,6 +4,10 @@ A local web page that turns YouTube or Spotify links into MP3 files.
 Files come out in the format the Psier S18 player reads: constant 192 kbps MP3,
 44.1 kHz, stereo, ID3v2.3 tags and a simple file name (`artist-title.mp3`).
 
+<img width="1626" height="888" alt="Screenshot 2026-10-05 at 3 53 45 PM" src="https://github.com/user-attachments/assets/a56f2cf5-1278-4f1e-a4bf-1194f67728f6" />
+<img width="1637" height="703" alt="Screenshot 2026-10-05 at 3 53 27 PM" src="https://github.com/user-attachments/assets/aca2dd8e-658a-48e1-880b-be0fe7073e70" />
+
+
 ## How to use it
 
 Double-click `start.command`. It opens a Terminal window running the server and
