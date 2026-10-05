@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>save-your-music</title>
+<style>
+  :root {
+    --bg: #f6f4ef; --card: #ffffff; --text: #1d1b16; --muted: #6f6a5f;
+    --line: #e2ddd2; --accent: #d9482b; --accent-text: #ffffff;
+    --ok: #2e7d4f; --err: #b3261e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #15140f; --card: #1f1d17; --text: #f1ede3; --muted: #a29c8e;
+      --line: #35322a; --accent: #f0633f; --accent-text: #15140f;
+      --ok: #6fcf97; --err: #ff8a80;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  main { max-width: 640px; margin: 0 auto; padding: 56px 16px 80px; }
+  h1 { font-size: 30px; letter-spacing: -0.02em; margin: 0 0 6px; }
+  .lead { color: var(--muted); margin: 0 0 28px; }
+  textarea {
+    width: 100%; min-height: 120px; resize: vertical; padding: 14px;
+    border: 1px solid var(--line); border-radius: 12px;
+    background: var(--card); color: var(--text); font: inherit;
+  }
+  textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  button {
+    margin-top: 12px; width: 100%; padding: 13px 18px; border: 0; border-radius: 12px;
+    background: var(--accent); color: var(--accent-text); font: inherit; font-weight: 600;
+    cursor: pointer;
+  }
+  button:disabled { opacity: 0.55; cursor: default; }
+  ul { list-style: none; margin: 28px 0 0; padding: 0; }
+  li {
+    display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; margin-bottom: 8px;
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  }
+  .dot { flex: none; width: 10px; height: 10px; margin-top: 7px; border-radius: 50%; background: var(--line); }
+  .working .dot { background: var(--accent); animation: pulse 1s ease-in-out infinite; }
+  .done .dot { background: var(--ok); }
+  .failed .dot { background: var(--err); }
+  @keyframes pulse { 50% { opacity: 0.25; } }
+  .info { min-width: 0; flex: 1; }
+  .name { font-weight: 600; overflow-wrap: anywhere; }
+  .status { color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
+  .failed .status { color: var(--err); }
+  .note { color: var(--muted); font-size: 14px; margin-top: 32px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>save-your-music</h1>
+  <p class="lead">Pegá links de YouTube o Spotify, uno por línea, y se descargan como MP3.</p>
+
+  <form id="form">
+    <textarea id="links" placeholder="https://youtu.be/...&#10;https://open.spotify.com/track/..." autofocus></textarea>
+    <button id="go" type="submit">Descargar MP3</button>
+  </form>
+
+  <ul id="list"></ul>
+
+  <p class="note">MP3 a 192 kbps, listo para el reproductor. Los temas sueltos tardan unos segundos; los mixes largos, varios minutos. Los links de Spotify se buscan en YouTube; álbumes y playlists de Spotify no se pueden bajar desde acá.</p>
+</main>
+
+<script>
+const form = document.getElementById("form");
+const links = document.getElementById("links");
+const go = document.getElementById("go");
+const list = document.getElementById("list");
+
+function addItem(url) {
+  const li = document.createElement("li");
+  li.innerHTML = '<span class="dot"></span><div class="info"><div class="name"></div><div class="status"></div></div>';
+  li.querySelector(".name").textContent = url;
+  list.prepend(li);
+  return li;
+}
+
+function setState(li, state, status, name) {
+  li.className = state;
+  li.querySelector(".status").textContent = status;
+  if (name) li.querySelector(".name").textContent = name;
+}
+
+async function download(url, li) {
+  setState(li, "working", "Descargando y convirtiendo…");
+  let response;
+  try {
+    response = await fetch("/api/download", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url }),
+    });
+  } catch (e) {
+    setState(li, "failed", "No se pudo conectar con el servidor. ¿Sigue abierto?");
+    return;
+  }
+  if (!response.ok) {
+    let message = "No se pudo descargar.";
+    try { message = (await response.json()).error || message; } catch (e) {}
+    setState(li, "failed", message);
+    return;
+  }
+  const match = /filename="([^"]+)"/.exec(response.headers.get("Content-Disposition") || "");
+  const name = match ? match[1] : "cancion.mp3";
+  const blob = await response.blob();
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+  setState(li, "done", "Listo · " + (blob.size / 1048576).toFixed(1) + " MB · en tu carpeta de Descargas", name);
+}
+
+form.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const urls = links.value.split(/\s+/).filter(Boolean);
+  if (!urls.length) return;
+  links.value = "";
+  go.disabled = true;
+  const items = urls.map((url) => [url, addItem(url)]);
+  items.forEach(([, li]) => setState(li, "", "En cola"));
+  for (const [url, li] of items) await download(url, li);
+  go.disabled = false;
+  links.focus();
+});
+</script>
+</body>
+</html>

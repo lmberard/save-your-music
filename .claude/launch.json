@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "save-your-music",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["server.py"],
+      "port": 8765
+    }
+  ]
+}
